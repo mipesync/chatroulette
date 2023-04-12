@@ -14,7 +14,7 @@ export class TicketController {
     @HttpCode(HttpStatus.OK)
     @Get()
     async getAll(@Req() req: Request): Promise<any> {
-        const result = await this.ticketService.getAll(req.headers['role'].toString()).catch((err) => {
+        const result = await this.ticketService.getAll(req.header('Authorization').replace('Bearer ', '')).catch((err) => {
             throw err;
         });
 
