@@ -8,7 +8,7 @@ export class VkStrategy extends PassportStrategy(Strategy, "vkontakte") {
         super({
             clientID: process.env.VK_CLIENT_ID,
             clientSecret: process.env.VK_CLIENT_SECRET,
-            callbackURL: "http://localhost:3000/api/auth/vk/redirect",
+            callbackURL: `http://${process.env.HOST}:${process.env.PORT}/api/auth/vk/redirect`,
             scope: ["email"],
             lang: "ru"
         },
