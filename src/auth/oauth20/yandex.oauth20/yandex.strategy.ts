@@ -8,7 +8,7 @@ export class YandexStrategy extends PassportStrategy(Strategy, "yandex") {
         super({            
             clientID: process.env.YANDEX_CLIENT_ID,
             clientSecret: process.env.YANDEX_CLIENT_SECRET,
-            callbackURL: `http://localhost:${process.env.PORT}/api/auth/yandex/redirect`
+            callbackURL: `http://${process.env.HOST}:${process.env.PORT}/api/auth/yandex/redirect`
         });
     }
 
