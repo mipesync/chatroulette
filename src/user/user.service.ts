@@ -19,6 +19,7 @@ export class UserService {
             
             throw new BadRequestException("Неверный id");
         });
+        
         if (!user) throw new NotFoundException('Пользователь не найден');
 
         return user;

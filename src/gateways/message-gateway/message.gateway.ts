@@ -9,8 +9,7 @@ import { MessageGateWayService } from "./message.gateway.service";
 @UseGuards(WsGuard)
 @WebSocketGateway()
 export class MessageGateway implements OnModuleInit {
-    constructor(private readonly messageService: MessageGateWayService) {}
-
+    
     @WebSocketServer()
     private readonly server: Server;
     private readonly logger: Logger = new Logger('MessageGateway');
@@ -23,18 +22,8 @@ export class MessageGateway implements OnModuleInit {
                 message: 'Пользователь не состоит в чате'
             });
         }
-        
-        let messageId = await this.messageService.newMessage(messageDto).catch((e) => {
-            this.server.to(socket.id).emit('onException', {
-                statusCode: e.status,
-                message: e.message
-            });
-
-            stop();
-        });
 
         this.server.to(messageDto.roomId).emit('onNewMessage', {
-            id: messageId,
             message: messageDto
         });
     }
