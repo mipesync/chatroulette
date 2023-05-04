@@ -7,6 +7,11 @@ import { CreateUserDto } from './dto/createUser.dto';
 import { SignInDto } from './dto/signIn.dto';
 import { JwtManager } from './jwt/jwt.manager';
 import { Roles } from 'src/common/permissions-manager/roles';
+import { SignInWithVkDto } from './dto/signInWithVk.dto';
+import { SignInWithYandexDto } from './dto/signInWithYandex.dto';
+import { SignInWithGoogleDto } from './dto/signInWithGoogle.dto';
+import { AdminRegisterDto } from './dto/adminRegister.dto';
+import { AdminLoginDto } from './dto/adminLogin.dto';
 
 @Injectable()
 export class AuthService {
@@ -93,25 +98,25 @@ export class AuthService {
         }
     }
 
-    async signInWithGoogle(data) {
-        if (!data.user) throw new BadRequestException();
+    async signInWithGoogle(dto: SignInWithGoogleDto) {
+        if (!dto) throw new BadRequestException();
 
-        let user = await this.userModel.findOne({ googleId: data.user.id });
+        let user = await this.userModel.findOne({ googleId: dto.googleId });
         if (user) return this.signin({ username: user.username, password: "", rememberMe: false, authStrategy: "google" });
     
-        user = await this.userModel.findOne({ email: data.user.email });
+        user = await this.userModel.findOne({ email: dto.email });
         if (user) {
             throw new ForbiddenException("Пользователь уже существует, но аккаунт Google не привязан");
         }
     
         try {
             let newUser: User = {
-                username: data.user.email,
-                firstname: data.user.firstName,
-                lastname: data.user.lastName,
-                gender: data.user.gender,
-                email: data.user.email,
-                googleId: data.user.id,
+                username: dto.email,
+                firstname: dto.firstname,
+                lastname: dto.lastname,
+                gender: dto.gender,
+                email: dto.email,
+                googleId: dto.googleId,
                 password: process.env.AUTO_PASS,
                 role: Roles.USER
             };
@@ -123,25 +128,25 @@ export class AuthService {
         }
     }
 
-    async signInWithYandex(data) {
-        if (!data.user) throw new BadRequestException();
+    async signInWithYandex(dto: SignInWithYandexDto) {
+        if (!dto) throw new BadRequestException();
 
-        let user = await this.userModel.findOne({ yandexId: data.user.id });        
+        let user = await this.userModel.findOne({ yandexId: dto.yandexId });        
         if (user) return this.signin({ username: user.username, password: "", rememberMe: false, authStrategy: "yandex" });
     
-        user = await this.userModel.findOne({ email: data.user.email });
+        user = await this.userModel.findOne({ email: dto.email });
         if (user) {
             throw new ForbiddenException("Пользователь уже существует, но аккаунт Yandex не привязан");
         }   
     
         try {
             let newUser: User = {
-                username: data.user.username,
-                firstname: data.user.firstName,
-                lastname: data.user.lastName,
-                gender: data.user.gender,
-                email: data.user.email,
-                yandexId: data.user.id,
+                username: dto.username,
+                firstname: dto.firstname,
+                lastname: dto.lastname,
+                gender: dto.gender,
+                email: dto.email,
+                yandexId: dto.yandexId,
                 password: process.env.AUTO_PASS,
                 role: Roles.USER
             };
@@ -153,25 +158,25 @@ export class AuthService {
         }
     }
 
-    async signInWithVkontakte(data) {
-        if (!data.user) throw new BadRequestException();
+    async signInWithVkontakte(dto: SignInWithVkDto) {
+        if (!dto) throw new BadRequestException();
 
-        let user = await this.userModel.findOne({ vkontakteId: data.user.id });        
+        let user = await this.userModel.findOne({ vkontakteId: dto.vkontakteId });        
         if (user) return this.signin({ username: user.username, password: "", rememberMe: false, authStrategy: "vkontakte" });
     
-        user = await this.userModel.findOne({ email: data.user.email });
+        user = await this.userModel.findOne({ email: dto.email });
         if (user) {
             throw new ForbiddenException("Пользователь уже существует, но аккаунт VK не привязан");
         }      
     
         try {            
             let newUser: User = {
-                username: data.user.username,
-                firstname: data.user.firstName,
-                lastname: data.user.lastName,
-                gender: data.user.gender,
-                email: data.user.email,
-                vkontakteId: data.user.id,
+                username: dto.username,
+                firstname: dto.firstname,
+                lastname: dto.lastname,
+                gender: dto.gender,
+                email: dto.email,
+                vkontakteId: dto.vkontakteId,
                 password: process.env.AUTO_PASS,
                 role: Roles.USER
             };
@@ -183,38 +188,60 @@ export class AuthService {
         }
     }
 
-    async linkGoogle(data): Promise<void> {
-        if (!data.user) throw new BadRequestException();
+    async adminRegister(dto: AdminRegisterDto) {
+        if (!dto) throw new BadRequestException();
 
-        console.log(data);
-        
+        let admin = await this.userModel.findById(dto.adminId);      
+        if (admin.role != Roles.ADMINISTRATOR ) {
+            throw new ForbiddenException("Вы не можете зарегистрировать нового администратора, т.к. сами им не являетесь");
+        }
 
-        let user = await this.userModel.findOne({ googleId: data.user.id });
-    
-        user = await this.userModel.findOne({ email: data.user.email });
+        let user = await this.userModel.findOne({ email: dto.email });
         if (user) {
-            throw new ForbiddenException("Пользователь уже существует, но аккаунт Google не привязан");
-        }
-    
-        try {
-            let newUser: User = {
-                username: data.user.email,
-                firstname: data.user.firstName,
-                lastname: data.user.lastName,
-                gender: data.user.gender,
-                email: data.user.email,
-                googleId: data.user.id,
-                password: process.env.AUTO_PASS, 
-                role: Roles.USER
-            };
+            user.role = Roles.ADMINISTRATOR;
+            user.password = await this.passwordHash(dto.password);
+            await user.save();
+        } else {
+            let entity = await this.userModel.findOne({ username: dto.username } || { email: dto.email });    
+            if (entity !== null) throw new BadRequestException('Пользователь с такой почтой или именем пользователя уже существует');
 
-            await this.userModel.create(newUser);
-            return this.signin({ username: newUser.username, password: "", rememberMe: false, authStrategy: "google" });
-        } catch (e) {
-            throw new Error(e);
-        }
+            user.username = dto.username;
+            user.firstname = dto.firstname;
+            user.lastname = dto.lastname;
+            user.gender = dto.gender;
+            user.email = dto.email;
+            user.role = Roles.ADMINISTRATOR;
+            user.password = await this.passwordHash(dto.password);
+
+            let createdAdmin = await this.userModel.create(user);
+            return { adminId: createdAdmin.id }
+        }        
     }
 
+    async adminLogin(dto: AdminLoginDto) {
+        if (!dto) throw new BadRequestException();
+        
+        let user = await this.userModel.findOne({ email: dto.email });
+        if (!user) {
+            throw new NotFoundException("Пользователь не найден");
+        }
+        if (user.username !== dto.username) {
+            throw new BadRequestException("Неверное имя пользователя");
+        }
+        if (user.role !== Roles.ADMINISTRATOR) {
+            throw new ForbiddenException("Вы не являетесь администратором");
+        }
+
+        let result = await this.signin({
+            username: dto.username,
+            password: dto.password,
+            rememberMe: false,
+            authStrategy: "jwt"
+        } as SignInDto);
+
+        return result;
+    }
+    
     private async passwordValidate(password: string, hash: string): Promise<boolean> {
         return await bcrypt.compare(password, hash);
     }

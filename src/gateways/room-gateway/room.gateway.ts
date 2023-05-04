@@ -9,7 +9,7 @@ import { User } from "src/user/schemas/user.schema";
 import { LeaveRoomDto } from "./dto/leaveRoom.dto";
 
 @UseGuards(WsGuard)
-@WebSocketGateway()
+@WebSocketGateway({ cors: true })
 export class RoomGateway implements OnModuleInit/*, OnGatewayConnection, */, OnGatewayDisconnect {
     constructor(private readonly gatewayService: RoomGatewayService,
         private readonly userService: UserService) {}

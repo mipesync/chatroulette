@@ -8,6 +8,11 @@ import { YandexAuthGuard } from './oauth20/yandex.oauth20/yandex-auth.guard';
 import { Request, Response } from 'express';
 import { VkAuthGuard } from './oauth20/vk.oauth20/vk-auth.guard';
 import { GoogleLinkGuard } from './oauth20/google.oauth20/link/google-link.guard';
+import { SignInWithVkDto } from './dto/signInWithVk.dto';
+import { SignInWithYandexDto } from './dto/signInWithYandex.dto';
+import { SignInWithGoogleDto } from './dto/signInWithGoogle.dto';
+import { AdminRegisterDto } from './dto/adminRegister.dto';
+import { AdminLoginDto } from './dto/adminLogin.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -48,7 +53,7 @@ export class AuthController {
             };
     }
 
-    @UseGuards(GoogleAuthGuard)
+    /*@UseGuards(GoogleAuthGuard)
     @Get("google/login")
     async signInWithGoogle() {}
   
@@ -58,9 +63,9 @@ export class AuthController {
         return this.authService.signInWithGoogle(req).catch((e) => {
             throw e;
         });
-    }
+    }*/
 
-    @UseGuards(JwtAuthGuard)
+    /*@UseGuards(JwtAuthGuard)
     @UseGuards(GoogleLinkGuard)
     @Get("google-link")
     async linkGoogle() {}
@@ -72,9 +77,9 @@ export class AuthController {
         return this.authService.linkGoogle(req).catch((e) => {
             throw e;
         });
-    }
+    }*/
 
-    @UseGuards(YandexAuthGuard)
+    /*@UseGuards(YandexAuthGuard)
     @Get("yandex/login")
     async signInWithYandex() {}
   
@@ -84,9 +89,9 @@ export class AuthController {
         return this.authService.signInWithYandex(req).catch((e) => {
             throw e;
         });        
-    }
+    }*/
 
-    @UseGuards(VkAuthGuard)
+    /*@UseGuards(VkAuthGuard)
     @Get("vk/login")
     async signInWithVk(@Res() res: Response) {}
   
@@ -94,6 +99,47 @@ export class AuthController {
     @Get("vk/redirect")
     async signInWithVkRedirect(@Req() req) {
         return this.authService.signInWithVkontakte(req).catch((e) => {
+            throw e;
+        });  
+    }*/
+
+    @HttpCode(HttpStatus.OK)
+    @Post("admin/login")
+    async adminLogin(@Body() dto: AdminLoginDto){        
+        return this.authService.adminLogin(dto).catch((e) => {
+            throw e;
+        });  
+    }
+
+    @HttpCode(HttpStatus.OK)
+    @UseGuards(JwtAuthGuard)
+    @Post("admin/register")
+    async adminRegister(@Body() dto: AdminRegisterDto){        
+        return this.authService.adminRegister(dto).catch((e) => {
+            throw e;
+        });  
+    }
+
+    @HttpCode(HttpStatus.OK)
+    @Post("vk-oauth")
+    async signInWithVk(@Body() dto: SignInWithVkDto){
+        return this.authService.signInWithVkontakte(dto).catch((e) => {
+            throw e;
+        });  
+    }
+
+    @HttpCode(HttpStatus.OK)
+    @Post("yandex-oauth")
+    async signInWithYandex(@Body() dto: SignInWithYandexDto){
+        return this.authService.signInWithYandex(dto).catch((e) => {
+            throw e;
+        });  
+    }
+
+    @HttpCode(HttpStatus.OK)
+    @Post("google-oauth")
+    async signInWithGoogle(@Body() dto: SignInWithGoogleDto){
+        return this.authService.signInWithGoogle(dto).catch((e) => {
             throw e;
         });  
     }

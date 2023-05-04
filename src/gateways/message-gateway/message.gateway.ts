@@ -4,10 +4,9 @@ import { Request } from "express";
 import { Socket, Server } from "socket.io";
 import { WsGuard } from "src/auth/jwt/ws.guard";
 import { NewMessageDto } from "./dto/newMessage.dto";
-import { MessageGateWayService } from "./message.gateway.service";
 
 @UseGuards(WsGuard)
-@WebSocketGateway()
+@WebSocketGateway({ cors: true })
 export class MessageGateway implements OnModuleInit {
     
     @WebSocketServer()
