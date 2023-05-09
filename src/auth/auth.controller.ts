@@ -91,9 +91,9 @@ export class AuthController {
         });        
     }*/
 
-    /*@UseGuards(VkAuthGuard)
+    @UseGuards(VkAuthGuard)
     @Get("vk/login")
-    async signInWithVk(@Res() res: Response) {}
+    async signInsWithVk(@Res() res: Response) {}
   
     @UseGuards(VkAuthGuard)
     @Get("vk/redirect")
@@ -101,7 +101,7 @@ export class AuthController {
         return this.authService.signInWithVkontakte(req).catch((e) => {
             throw e;
         });  
-    }*/
+    }
 
     @HttpCode(HttpStatus.OK)
     @Post("admin/login")
