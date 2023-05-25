@@ -122,7 +122,7 @@ export class AuthService {
             };
 
             await this.userModel.create(newUser);
-            return this.signin({ username: newUser.username, password: "", rememberMe: false, authStrategy: "google" });
+            return this.signin({ username: newUser.username, password: "", rememberMe: true, authStrategy: "google" });
         } catch (e) {
             throw new Error(e);
         }
@@ -152,7 +152,7 @@ export class AuthService {
             };
 
             await this.userModel.create(newUser);
-            return this.signin({ username: newUser.username, password: "", rememberMe: false, authStrategy: "yandex" });
+            return this.signin({ username: newUser.username, password: "", rememberMe: true, authStrategy: "yandex" });
         } catch (e) {
             throw new Error(e);
         }
@@ -182,7 +182,7 @@ export class AuthService {
             };
 
             await this.userModel.create(newUser);
-            return this.signin({ username: newUser.username, password: "", rememberMe: false, authStrategy: "vkontakte" });
+            return this.signin({ username: newUser.username, password: "", rememberMe: true, authStrategy: "vkontakte" });
         } catch (e) {
             throw new Error(e);
         }
