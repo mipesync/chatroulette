@@ -8,6 +8,7 @@ import { UserViewModel } from './viewModel/user.viewModel';
 import { Roles } from 'src/common/permissions-manager/roles';
 import { BlockUserDto } from './dto/block-user.dto';
 import { UnblockUserDto } from './dto/unblock-user.dto';
+import { Queue } from 'src/gateways/room-gateway/queue';
 
 @Injectable()
 export class UserService {
@@ -25,13 +26,22 @@ export class UserService {
         return user;
     }
 
-    async getAll(queue: any[]) {
+    async getAll(redis: any) {
+        let queuesKey = await redis.keys("*");
+
+        let queues: Queue[] = [];
+
+        queuesKey.forEach(async queueKey => {
+            let queue: Queue = JSON.parse(await redis.get(queueKey)) as Queue;
+            queues.push(queue);
+        });
+        
         let users = await this.userModel.find();
 
         let usersVM: any[] = [];        
 
         users.forEach((user) => {
-            const item = queue.find(item => item.userId === user.id);
+            const item = queues.find(item => item.userId === user.id);
 
             if (!user.blocked) {
                 usersVM.push({
@@ -66,9 +76,18 @@ export class UserService {
         return usersVM;
     }
 
-    async getOnline(queue: any[]) {
-        let busy = queue.filter(item => item.isBusy).length;
-        let online = queue.length;
+    async getOnline(redis: any) {
+        let queuesKey = await redis.keys("*");
+
+        let queues: Queue[] = [];
+
+        queuesKey.forEach(async queueKey => {
+            let queue: Queue = JSON.parse(await redis.get(queueKey)) as Queue;
+            queues.push(queue);
+        });
+
+        let busy = queues.filter(item => item.isBusy).length;
+        let online = queues.length;
 
         return {
             busy,

@@ -27,7 +27,7 @@ export class UserController {
     @HttpCode(HttpStatus.OK)
     @Get()
     async getUsers() {
-        let users = await this.userService.getAll(this.roomGateway.queue).catch((err) => {
+        let users = await this.userService.getAll(this.roomGateway.redis).catch((err) => {
             throw err;
         });
 
@@ -47,7 +47,7 @@ export class UserController {
     @HttpCode(HttpStatus.OK)
     @Get('details/online')
     async getOnline() {
-        let users = await this.userService.getOnline(this.roomGateway.queue).catch((err) => {
+        let users = await this.userService.getOnline(this.roomGateway.redis).catch((err) => {
             throw err;
         });
 
