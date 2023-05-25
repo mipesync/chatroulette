@@ -18,8 +18,8 @@ export class UserService {
             console.log(e.message);
             
             throw new BadRequestException("Неверный id");
-        });
-        
+        });  
+
         if (!user) throw new NotFoundException('Пользователь не найден');
 
         return user;

@@ -1,5 +1,5 @@
 import { OnModuleInit, UseGuards } from "@nestjs/common";
-import { ConnectedSocket, MessageBody, OnGatewayDisconnect, SubscribeMessage, WebSocketGateway, WebSocketServer } from "@nestjs/websockets";
+import { ConnectedSocket, MessageBody, OnGatewayConnection, OnGatewayDisconnect, SubscribeMessage, WebSocketGateway, WebSocketServer } from "@nestjs/websockets";
 import { Server, Socket } from 'socket.io';
 import { WsGuard } from "src/auth/jwt/ws.guard";
 import { RoomGatewayService } from "./room.gateway.service";
@@ -7,37 +7,43 @@ import { FindNewRoomDto } from "./dto/findNewRoom.dto";
 import { UserService } from "src/user/user.service";
 import { User } from "src/user/schemas/user.schema";
 import { LeaveRoomDto } from "./dto/leaveRoom.dto";
+import { Queue } from "./queue";
+import { RedisClientType, createClient } from "redis";
 
-@UseGuards(WsGuard)
 @WebSocketGateway({ cors: true })
-export class RoomGateway implements OnModuleInit/*, OnGatewayConnection, */, OnGatewayDisconnect {
-    constructor(private readonly gatewayService: RoomGatewayService,
-        private readonly userService: UserService) {}
+export class RoomGateway implements OnGatewayConnection, OnGatewayDisconnect {
+    redis: RedisClientType;
 
-    @WebSocketServer()
+    constructor(private readonly gatewayService: RoomGatewayService,
+        private readonly userService: UserService) {            
+            this.redis = createClient();
+            (async () => {
+                await this.redis.connect();
+            })();
+            this.redis.on('error', err => console.log('Redis Client Error', err));
+            this.redis.on('connect', () => console.log('Redis Client Connected'));
+        }
+
+    @WebSocketServer() 
     private server: Server;
 
-    queue: {
-        socketId: string;
-        userId: string;
-        gender: string;
-        country: number;
-        isBusy: boolean;
-    }[] = [];
+    async handleConnection(@ConnectedSocket() socket: Socket) {
+        console.log(`Клиент ${socket.id} был подключен`);
+        
+        await this.redis.set(socket.id, "");  
+    }
 
-    handleDisconnect(@ConnectedSocket() socket: Socket) {        
-        let queue = this.queue.find(queue => queue.socketId === socket.id);
+    async handleDisconnect(@ConnectedSocket() socket: Socket) {   
+        let queue = await this.redis.get(socket.id);
         if (queue) {
-            var index = this.queue.indexOf(queue);
-            if (index !== -1) {
-                this.queue.splice(index, 1);
-            }
+            await this.redis.del(socket.id);
         }    
     }
 
+    //@UseGuards(WsGuard)
     @SubscribeMessage('joinToQueue')
-    async joinToQueue(@MessageBody() { userId }: { userId: string }, @ConnectedSocket() socket: Socket) {
-        let user = await this.userService.getUserById(userId).catch((e) => {
+    async joinToQueue(@MessageBody() dto: FindNewRoomDto, @ConnectedSocket() socket: Socket) {
+        let user = await this.userService.getUserById(dto.userId).catch((e) => {
             this.server.to(socket.id).emit('onException', {
                 statusCode: e.status,
                 message: e.message
@@ -46,65 +52,96 @@ export class RoomGateway implements OnModuleInit/*, OnGatewayConnection, */, OnG
             stop();
         }) as User;
 
-        this.queue.push({
+        let queue: Queue = {
             socketId: socket.id,
-            userId: userId,
-            gender: user.gender,
-            country: user.country,
-            isBusy: false
-        });
-    }
-
-    @SubscribeMessage('findRoom')
-    async findNewRoom(@MessageBody() dto: FindNewRoomDto, @ConnectedSocket() socket: Socket) {
-        let partnerQueue = this.queue.find(queue => queue.country === dto.country 
-            && queue.gender === dto.gender 
-            && queue.socketId !== socket.id
-            && !queue.isBusy);
-        if (!partnerQueue){            
-            partnerQueue = this.queue.find(queue => (queue.country === dto.country 
-                || queue.gender === dto.gender) 
-                && queue.socketId !== socket.id
-                && !queue.isBusy);
-        } 
-        if (!partnerQueue) {
-            partnerQueue = this.queue.find(queue => !queue.isBusy && queue.socketId !== socket.id);
-        }
-
-        let myQueue = this.queue.find(queue => queue.socketId === socket.id);
-        
-        let roomId = await this.gatewayService.create([dto.userId, partnerQueue.userId]).catch((e) => {
-            this.server.to(socket.id).emit('onException', {
-                statusCode: e.status,
-                message: e.message
-            });
-
-            stop();
-        });
- 
-        socket.join(roomId);
-        myQueue.isBusy = true;
-
-        const partnerSocket = this.server.sockets.sockets.get(partnerQueue.socketId);
-        partnerSocket.join(roomId);
-        partnerQueue.isBusy = true;
-
-
-        this.server.to(roomId).emit('onFindRoom', {
-            roomId,
-            partner: {
-                id: partnerQueue.userId,
-                gender: partnerQueue.gender,
-                country: partnerQueue.country
-            },
             userId: dto.userId,
             gender: dto.gender,
-            country: dto.country
+            country: dto.country,
+            isBusy: false
+        };
+
+        await this.redis.set(queue.socketId, JSON.stringify(queue));
+
+        socket.emit("onJoinToQueue", {
+            status: "OK"
         });
     }
 
+    //@UseGuards(WsGuard)
+    @SubscribeMessage('findRoom')
+    async findNewRoom(@MessageBody() dto: FindNewRoomDto, @ConnectedSocket() socket: Socket) {
+        let queuesKey = await this.redis.keys("*");
+
+        let queues: Queue[] = [];
+
+        queuesKey.forEach(async queueKey => {
+            let queue: Queue = JSON.parse(await this.redis.get(queueKey)) as Queue;
+            queues.push(queue);
+        });
+
+        let partnerQueue = queues.find(queue => queue.country === dto.country 
+            //  && queue.gender === dto.gender 
+            //  && queue.socketId !== socket.id
+            //  && !queue.isBusy
+              );
+          if (!partnerQueue){            
+              partnerQueue = queues.find(queue => (queue.country === dto.country 
+                  || queue.gender === dto.gender) 
+                //  && queue.socketId !== socket.id
+                  && !queue.isBusy);
+          } 
+          if (!partnerQueue) {
+              partnerQueue = queues.find(queue => !queue.isBusy /*&& queue.socketId !== socket.id*/);
+          }
+          
+          let myQueue = queues.find(queue => queue.socketId === socket.id);
+  
+          let roomId = await this.gatewayService.create([dto.userId, partnerQueue.userId]).catch((e) => {
+              this.server.to(socket.id).emit('onException', {
+                  statusCode: e.status,
+                  message: e.message
+              });
+  
+              stop();
+          });
+   
+          socket.join(roomId);
+          myQueue.isBusy = true;
+  
+          const partnerSocket = this.server.sockets.sockets.get(partnerQueue.socketId);
+          partnerSocket.join(roomId);
+          partnerQueue.isBusy = true;
+          
+          this.server.to(partnerQueue.socketId).emit("waitOffer", {from: socket.id});
+          this.server.to(socket.id).emit("makeOffer", {to: partnerQueue.socketId});
+      //	this.server.to(partnerQueue.socketId).emit("waitOffer", {from: socket.id, to: partnerQueue.socketId});
+          this.server.to(roomId).emit('onFindRoom', {
+              roomId,
+              socketId:socket.id,
+              partner: {
+                  id: partnerQueue.userId,
+                  socketId: partnerQueue.socketId,
+                  gender: partnerQueue.gender,
+                  country: partnerQueue.country
+              },
+              userId: dto.userId,
+              gender: dto.gender,
+              country: dto.country
+          });
+    }
+
+    //@UseGuards(WsGuard)
     @SubscribeMessage('leaveRoom')
     async onLeaveRoom(@MessageBody() dto: LeaveRoomDto, @ConnectedSocket() socket: Socket) {
+        let queuesKey = await this.redis.keys("*");
+
+        let queues: Queue[] = [];
+
+        queuesKey.forEach(async queueKey => {
+            let queue: Queue = JSON.parse(await this.redis.get(queueKey)) as Queue;
+            queues.push(queue);
+        });
+
         await this.gatewayService.leave(dto).catch((e) => {
             this.server.to(socket.id).emit('onException', {
                 statusCode: e.status,
@@ -119,7 +156,7 @@ export class RoomGateway implements OnModuleInit/*, OnGatewayConnection, */, OnG
             roomId: dto.roomId
         });
 
-        this.queue.forEach(item => {
+        queues.forEach(item => {
             dto.membersId.forEach(id => {
                 if (item.userId === id) {
                     item.isBusy = false;
@@ -131,26 +168,21 @@ export class RoomGateway implements OnModuleInit/*, OnGatewayConnection, */, OnG
 
     }
 
-//TODO: ТИпо работает
+    //@UseGuards(WsGuard)
     @SubscribeMessage('offer')
-    handleOffer(data: { offer: any, roomId: string }) {
+    handleOffer(@MessageBody() data: { offer: any, roomId: string }) {
         this.server.to(data.roomId).emit('offer', data.offer);
     }
 
+    //@UseGuards(WsGuard)
     @SubscribeMessage('answer')
-    handleAnswer(data: { answer: any, roomId: string }) {
+    handleAnswer(@MessageBody() data: { answer: any, roomId: string }) {
         this.server.to(data.roomId).emit('answer', data.answer);
     }
 
+    //@UseGuards(WsGuard)
     @SubscribeMessage('iceCandidate')
     handleIceCandidate(data: { candidate: any, roomId: string }) {
         this.server.to(data.roomId).emit('iceCandidate', data.candidate);
-    }
-
-    onModuleInit() {
-        this.server.on('connection', socket => {
-            this.server.to(socket.id).emit('onConnection', {connectionId: socket.id});
-            console.log(`Клиент ${socket.id} был подключен`);
-        });
     }
 }

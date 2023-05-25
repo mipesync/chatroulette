@@ -5,7 +5,6 @@ import { Socket, Server } from "socket.io";
 import { WsGuard } from "src/auth/jwt/ws.guard";
 import { NewMessageDto } from "./dto/newMessage.dto";
 
-@UseGuards(WsGuard)
 @WebSocketGateway({ cors: true })
 export class MessageGateway implements OnModuleInit {
     

@@ -19,7 +19,7 @@ export class User{
     @Prop({ required: true })
     email: string;
 
-    @Prop({ required: true })
+    @Prop()
     gender: string;
 
     @Prop({ required: true })
@@ -46,7 +46,7 @@ export class User{
     @Prop()
     reason?: Reason;
 
-    @Prop({ isRequired: true })
+    @Prop()
     role: Roles;
 
     @Prop()
