@@ -24,6 +24,7 @@ import { TicketModule } from './ticket/ticket.module';
         }),
         MongooseModule.forRoot(process.env.MONGO_URL),
         UserModule,
+        MessageGatewayModule,
         RoomModule,
         MessageModule,
         TicketModule
