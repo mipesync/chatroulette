@@ -21,14 +21,12 @@ export class RoomGateway implements OnGatewayConnection, OnGatewayDisconnect {
     queue: Queue[] = [];
 
     async handleConnection(@ConnectedSocket() socket: Socket) {
-        this.server.on('connection', socket => {
-            this.server.to(socket.id).emit('onConnection', {connectionId: socket.id});
-            console.log(`Клиент ${socket.id} был подключен`);
-        });    
-        
         this.queue.push({
             socketId: socket.id
         } as Queue);        
+
+        console.log(this.queue);
+        
     }
 
     async handleDisconnect(@ConnectedSocket() socket: Socket) {   
