@@ -11,7 +11,6 @@ import { join } from 'path';
 import { MessageModule } from './message/message.module';
 import { JwtManager } from './auth/jwt/jwt.manager';
 import { TicketModule } from './ticket/ticket.module';
-import { RedisModule, RedisModuleOptions } from '@liaoliaots/nestjs-redis';
 
 @Module({
     imports: [
@@ -25,8 +24,6 @@ import { RedisModule, RedisModuleOptions } from '@liaoliaots/nestjs-redis';
         }),
         MongooseModule.forRoot(process.env.MONGO_URL),
         UserModule,
-        RoomGatewayModule,
-        MessageGatewayModule,
         RoomModule,
         MessageModule,
         TicketModule
